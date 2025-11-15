@@ -6,9 +6,9 @@ import FormLabel from "@mui/joy/FormLabel";
 import Input from "@mui/joy/Input";
 import Sheet from "@mui/joy/Sheet";
 import Typography from "@mui/joy/Typography";
-import { signIn } from "aws-amplify/auth";
+import { resendSignUpCode, signIn } from "aws-amplify/auth";
 import React, { useState } from "react";
-import { NavLink } from "react-router";
+import { NavLink, useNavigate } from "react-router";
 import * as styles from "./styles";
 
 type SignInForm = {
@@ -18,6 +18,7 @@ type SignInForm = {
 };
 
 export default function SignInScreen() {
+  const navigate = useNavigate();
   const [form, setForm] = useState<SignInForm>({
     email: "",
     password: "",
@@ -58,6 +59,12 @@ export default function SignInScreen() {
         password: form.password,
       });
       console.log(signInRes);
+      if (signInRes.nextStep?.signInStep === "CONFIRM_SIGN_UP") {
+        await resendSignUpCode({ username: form.email });
+        navigate(
+          `/confirm-signup?email=${encodeURIComponent(form.email)}&password=${encodeURIComponent(form.password)}`
+        );
+      }
     } catch (err) {
       console.error(err);
       setError("Sai thông tin đăng nhập. Vui lòng thử lại");

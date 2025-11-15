@@ -1,15 +1,14 @@
 import { Authenticator } from "@aws-amplify/ui-react";
 import "@fontsource/inter";
 import { Amplify } from "aws-amplify";
-import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 
 Amplify.configure({
   Auth: {
     Cognito: {
-      userPoolId: "add later",
-      userPoolClientId: "add later",
+      userPoolId: import.meta.env.VITE_USER_POOL_ID || "",
+      userPoolClientId: import.meta.env.VITE_USER_CLIENT_ID || "",
       loginWith: {
         email: true,
       },
@@ -34,17 +33,15 @@ Amplify.configure({
   API: {
     REST: {
       chatApi: {
-        endpoint: "add later",
-        region: "add later",
+        endpoint: import.meta.env.VITE_API_ENDPOINT || "",
+        region: import.meta.env.VITE_API_REGION || "",
       },
     },
   },
 });
 
 createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <Authenticator.Provider>
-      <App />
-    </Authenticator.Provider>
-  </StrictMode>
+  <Authenticator.Provider>
+    <App />
+  </Authenticator.Provider>
 );

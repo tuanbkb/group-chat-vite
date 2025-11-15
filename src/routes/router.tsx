@@ -1,4 +1,5 @@
 import { createBrowserRouter } from "react-router";
+import ConfirmSignUpScreen from "../screens/auth/ConfirmSignUp";
 import ForgetPasswordScreen from "../screens/auth/ForgetPassword";
 import SignInScreen from "../screens/auth/SignIn";
 import SignUpScreen from "../screens/auth/SignUp";
@@ -29,6 +30,14 @@ export const router = createBrowserRouter([
     Component: () => (
       <PublicRoute>
         <SignUpScreen />
+      </PublicRoute>
+    ),
+  },
+  {
+    path: "/confirm-signup",
+    Component: () => (
+      <PublicRoute>
+        <ConfirmSignUpScreen />
       </PublicRoute>
     ),
   },

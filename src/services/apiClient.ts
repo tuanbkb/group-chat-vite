@@ -1,4 +1,4 @@
-import { get, post } from "aws-amplify/api";
+import { get, post, put } from "aws-amplify/api";
 import { fetchAuthSession } from "aws-amplify/auth";
 
 async function getAuthHeader() {
@@ -34,9 +34,31 @@ export async function apiPost(
   const headers = {
     ...(options.headers || {}),
     ...(await getAuthHeader()),
+    'Content-Type': 'application/json',
   };
 
   const res = await post({
+    apiName,
+    path,
+    options: { ...options, body, headers },
+  }).response;
+
+  return res.body.json();
+}
+
+export async function apiPut(
+  apiName: string,
+  path: string,
+  body: any,
+  options: any = {}
+) {
+  const headers = {
+    ...(options.headers || {}),
+    ...(await getAuthHeader()),
+    'Content-Type': 'application/json',
+  };
+
+  const res = await put({
     apiName,
     path,
     options: { ...options, body, headers },

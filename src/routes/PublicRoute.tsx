@@ -1,5 +1,6 @@
 import { useAuthenticator } from "@aws-amplify/ui-react";
-import { Navigate } from "react-router";
+import { useEffect } from "react";
+import { useNavigate } from "react-router";
 
 type PublicRouteProps = {
   children: React.ReactNode;
@@ -7,13 +8,20 @@ type PublicRouteProps = {
 
 export function PublicRoute({ children }: PublicRouteProps) {
   const { authStatus } = useAuthenticator((context) => [context.authStatus]);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (authStatus === "authenticated") {
+      navigate("/", { replace: true });
+    }
+  }, [authStatus, navigate]);
 
   if (authStatus === "configuring") {
     return <div>Loading...</div>;
   }
 
   if (authStatus === "authenticated") {
-    return <Navigate to="/" replace />;
+    return null;
   }
 
   return <>{children}</>;

@@ -7,8 +7,9 @@ import Input from "@mui/joy/Input";
 import Sheet from "@mui/joy/Sheet";
 import Typography from "@mui/joy/Typography";
 import React, { useState } from "react";
-import { NavLink } from "react-router";
+import { NavLink, useNavigate } from "react-router";
 import * as styles from "./styles";
+import { signUp } from "aws-amplify/auth";
 
 type SignUpForm = {
   name: string;
@@ -18,6 +19,7 @@ type SignUpForm = {
 };
 
 export default function SignUpScreen() {
+  const navigate = useNavigate();
   const [form, setForm] = useState<SignUpForm>({
     name: "",
     email: "",
@@ -61,6 +63,9 @@ export default function SignUpScreen() {
       nextErrors.password = "Vui lòng nhập mật khẩu.";
     } else if (form.password.length < 8) {
       nextErrors.password = "Mật khẩu phải có ít nhất 8 ký tự.";
+    } else if (!/[a-z]/.test(form.password) || !/[0-9]/.test(form.password)) {
+      nextErrors.password =
+        "Mật khẩu phải chứa ít nhất 1 chữ thường và 1 chữ số.";
     }
     if (!form.confirmPassword) {
       nextErrors.confirmPassword = "Vui lòng xác nhận mật khẩu.";
@@ -75,12 +80,25 @@ export default function SignUpScreen() {
       setLoading(true);
       // Placeholder for real auth logic.
       // Replace this with your auth call (Amplify, Firebase, custom API, etc.).
-      await new Promise((resolve) => setTimeout(resolve, 700));
+      // import { signUp } from "aws-amplify/auth";
+      const res = await signUp({
+        username: form.email,
+        password: form.password,
+        options: { userAttributes: { name: form.name } },
+      });
       console.log("Signing up with", form);
-      // On success: redirect or update auth context
-    } catch (err) {
+      console.log("Sign up response:", res);
+      // On success: redirect to confirm signup screen
+      navigate(
+        `/confirm-signup?email=${encodeURIComponent(form.email)}&password=${encodeURIComponent(form.password)}`
+      );
+    } catch (err: any) {
       console.error(err);
-      setError("Đăng ký thất bại. Vui lòng thử lại.");
+      if (err.name === "UsernameExistsException") {
+        setError("Email này đã được sử dụng. Vui lòng sử dụng email khác.");
+      } else if (err.name === "InvalidPasswordException") {
+        setError("Mật khẩu không đáp ứng yêu cầu bảo mật.");
+      } else setError("Đăng ký thất bại. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }

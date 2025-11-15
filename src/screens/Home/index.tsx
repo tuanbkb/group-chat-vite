@@ -1,7 +1,7 @@
-import { useAuthenticator } from "@aws-amplify/ui-react";
 import { CircularProgress } from "@mui/joy";
 import Avatar from "@mui/joy/Avatar";
 import Box from "@mui/joy/Box";
+import Button from "@mui/joy/Button";
 import Divider from "@mui/joy/Divider";
 import Dropdown from "@mui/joy/Dropdown";
 import IconButton from "@mui/joy/IconButton";
@@ -13,13 +13,16 @@ import ListItemContent from "@mui/joy/ListItemContent";
 import Menu from "@mui/joy/Menu";
 import MenuButton from "@mui/joy/MenuButton";
 import MenuItem from "@mui/joy/MenuItem";
+import Modal from "@mui/joy/Modal";
+import ModalDialog from "@mui/joy/ModalDialog";
 import Sheet from "@mui/joy/Sheet";
 import Tab from "@mui/joy/Tab";
 import TabList from "@mui/joy/TabList";
 import Tabs from "@mui/joy/Tabs";
 import Typography from "@mui/joy/Typography";
+import { fetchUserAttributes, signOut } from "aws-amplify/auth";
 import { useEffect, useState } from "react";
-import { fetchUsername } from "../../services/user";
+import { fetchUserData, updateDisplayName } from "../../services/user";
 import * as styles from "./styles";
 
 type Conversation = {
@@ -39,8 +42,6 @@ type Message = {
 };
 
 export default function HomeScreen() {
-  const { signOut } = useAuthenticator((ctx) => [ctx.user]);
-
   const [selectedConversation, setSelectedConversation] = useState<
     string | null
   >("1");
@@ -48,8 +49,11 @@ export default function HomeScreen() {
   const [showSidebar, setShowSidebar] = useState(true);
   const [activeTab, setActiveTab] = useState<string>("chat");
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string>("");
+  const [openNameModal, setOpenNameModal] = useState(false);
+  const [newDisplayName, setNewDisplayName] = useState("");
 
   // Mock data
   const conversations: Conversation[] = [
@@ -125,15 +129,44 @@ export default function HomeScreen() {
     setSelectedConversation(null);
   }
 
+  function handleOpenNameModal() {
+    setNewDisplayName(username || "");
+    setOpenNameModal(true);
+  }
+
+  function handleCloseNameModal() {
+    setOpenNameModal(false);
+    setNewDisplayName("");
+  }
+
+  async function handleSaveDisplayName() {
+    if (newDisplayName.trim()) {
+      // TODO: Add API call to update username in database
+      console.log("Updating display name to:", newDisplayName.trim());
+      try {
+        await updateDisplayName(userId, newDisplayName.trim());
+        setUsername(newDisplayName.trim());
+      } catch (error) {
+        console.error("Error updating display name:", error);
+      }
+      handleCloseNameModal();
+    }
+  }
+
   useEffect(() => {
     const fetchHomeData = async () => {
       setLoading(true);
+      const uid = await fetchUserAttributes().then((attrs) => attrs.sub);
 
-      // Replace with DynamoDB fetch
+      if (!uid) {
+        console.error("User ID not found.");
+        signOut();
+        return;
+      }
+      setUserId(uid);
       try {
-        const data = await fetchUsername();
-        console.log("Fetched username:", data);
-        setUsername(data);
+        const data = await fetchUserData(uid);
+        setUsername(data.name);
       } catch (error) {
         console.error("Error fetching username:", error);
       }
@@ -275,8 +308,14 @@ export default function HomeScreen() {
             </Box>
           </MenuButton>
           <Menu placement="top-end" sx={styles.menu}>
-            <MenuItem sx={styles.menuItem}>📝 Thay đổi hồ sơ</MenuItem>
-            <MenuItem onClick={signOut} color="danger" sx={styles.menuItem}>
+            <MenuItem onClick={handleOpenNameModal} sx={styles.menuItem}>
+              📝 Thay đổi tên hiển thị
+            </MenuItem>
+            <MenuItem
+              onClick={() => signOut()}
+              color="danger"
+              sx={styles.menuItem}
+            >
               🚪 Đăng xuất
             </MenuItem>
           </Menu>
@@ -371,6 +410,37 @@ export default function HomeScreen() {
           </Box>
         )}
       </Box>
+
+      {/* Change Display Name Modal */}
+      <Modal open={openNameModal} onClose={handleCloseNameModal}>
+        <ModalDialog sx={{ minWidth: 400 }}>
+          <Typography level="h4" sx={{ mb: 2 }}>
+            📝 Thay đổi tên hiển thị
+          </Typography>
+          <Input
+            placeholder="Nhập tên hiển thị mới"
+            value={newDisplayName}
+            onChange={(e) => setNewDisplayName(e.target.value)}
+            sx={{ mb: 2 }}
+            autoFocus
+          />
+          <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+            <Button
+              variant="plain"
+              color="neutral"
+              onClick={handleCloseNameModal}
+            >
+              Hủy
+            </Button>
+            <Button
+              onClick={handleSaveDisplayName}
+              disabled={!newDisplayName.trim()}
+            >
+              Lưu
+            </Button>
+          </Box>
+        </ModalDialog>
+      </Modal>
     </Box>
   );
 }
