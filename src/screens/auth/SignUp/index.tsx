@@ -6,7 +6,7 @@ import FormLabel from "@mui/joy/FormLabel";
 import Input from "@mui/joy/Input";
 import Sheet from "@mui/joy/Sheet";
 import Typography from "@mui/joy/Typography";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router";
 import * as styles from "./styles";
 import { signUp } from "aws-amplify/auth";
@@ -19,6 +19,9 @@ type SignUpForm = {
 };
 
 export default function SignUpScreen() {
+  useEffect(() => {
+    document.title = "Đăng ký";
+  }, []);
   const navigate = useNavigate();
   const [form, setForm] = useState<SignUpForm>({
     name: "",

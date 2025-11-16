@@ -7,11 +7,14 @@ import Input from "@mui/joy/Input";
 import Sheet from "@mui/joy/Sheet";
 import Typography from "@mui/joy/Typography";
 import { confirmSignUp, resendSignUpCode, signIn } from "aws-amplify/auth";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { NavLink, useSearchParams } from "react-router";
 import * as styles from "./styles";
 
 export default function ConfirmSignUpScreen() {
+  useEffect(() => {
+    document.title = "Xác nhận tài khoản";
+  }, []);
   const [searchParams] = useSearchParams();
   const email = searchParams.get("email") || "";
   const password = searchParams.get("password") || "";

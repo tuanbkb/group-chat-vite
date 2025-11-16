@@ -7,7 +7,7 @@ import Input from "@mui/joy/Input";
 import Sheet from "@mui/joy/Sheet";
 import Typography from "@mui/joy/Typography";
 import { resendSignUpCode, signIn } from "aws-amplify/auth";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router";
 import * as styles from "./styles";
 
@@ -18,6 +18,9 @@ type SignInForm = {
 };
 
 export default function SignInScreen() {
+  useEffect(() => {
+    document.title = "Đăng nhập";
+  }, []);
   const navigate = useNavigate();
   const [form, setForm] = useState<SignInForm>({
     email: "",

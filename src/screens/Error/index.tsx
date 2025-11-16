@@ -1,8 +1,12 @@
 import Box from "@mui/joy/Box";
 import Button from "@mui/joy/Button";
 import Typography from "@mui/joy/Typography";
+import { useEffect } from "react";
 
 export default function ErrorScreen() {
+  useEffect(() => {
+    document.title = "Không tìm thấy trang";
+  }, []);
   return (
     <Box
       sx={{

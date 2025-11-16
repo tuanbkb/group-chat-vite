@@ -50,6 +50,9 @@ type Message = {
 };
 
 export default function HomeScreen() {
+  useEffect(() => {
+    document.title = "Chat App - Trang chủ";
+  }, []);
   const [selectedConversation, setSelectedConversation] = useState<
     string | null
   >(null);
