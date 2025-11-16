@@ -29,10 +29,32 @@ export const updateDisplayName = async (userId: string, newDisplayName: string):
   }
 };
 
-// export const fetchFriendlist = async (userId: string): Promise<any> => {
-//   try {
-//     const friendDocs = await apiGet("chatApi", "/users", {
+export const queryUsersByName = async (q: string): Promise<any> => {
+  try {
+    const users = await apiGet("chatApi", "/users/byName", {
+      queryParams: {
+        q,
+      },
+    });
+    console.log("Users fetched by name:", users);
+    return users;
+  } catch (error) {
+    console.error("Error querying users by name:", error);
+    throw error;
+  }
+};
 
-//     });
-//   }
-// }
+export const queryUsersByEmail = async (q: string): Promise<any> => {
+  try {
+    const users = await apiGet("chatApi", "/users/byEmail", {
+      queryParams: {
+        q,
+      },
+    });
+    console.log("Users fetched by email:", users);
+    return users;
+  } catch (error) {
+    console.error("Error querying users by email:", error);
+    throw error;
+  }
+};

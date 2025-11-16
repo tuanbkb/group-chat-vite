@@ -177,6 +177,67 @@ export const emptyTabSubtitle: SxProps = {
   color: "text.tertiary",
 };
 
+export const searchTabContent: SxProps = {
+  flex: 1,
+  display: "flex",
+  flexDirection: "column",
+  overflow: "hidden",
+};
+
+export const searchBarContainer: SxProps = {
+  p: 2,
+  pb: 1,
+};
+
+export const searchInput: SxProps = {
+  "--Input-minHeight": "44px",
+  borderRadius: "lg",
+  boxShadow: "sm",
+  transition: "all 0.2s ease",
+  "&:focus-within": {
+    boxShadow: "md",
+    transform: "translateY(-1px)",
+  },
+};
+
+export const searchLoadingContainer: SxProps = {
+  flex: 1,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  p: 3,
+};
+
+export const emptySearchResults: SxProps = {
+  flex: 1,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  p: 3,
+};
+
+export const searchResultsList: SxProps = {
+  flex: 1,
+  overflow: "auto",
+  "--ListItem-paddingY": "6px",
+  "--ListItem-paddingX": "16px",
+  p: 2,
+  pt: 1,
+  "&::-webkit-scrollbar": {
+    width: "8px",
+  },
+  "&::-webkit-scrollbar-track": {
+    bgcolor: "transparent",
+  },
+  "&::-webkit-scrollbar-thumb": {
+    bgcolor: "neutral.300",
+    borderRadius: "10px",
+    "&:hover": {
+      bgcolor: "neutral.400",
+    },
+  },
+};
+
 export const divider: SxProps = {
   mt: "auto",
 };
@@ -415,4 +476,58 @@ export const emptyChat: SxProps = {
 
 export const emptyChatText: SxProps = {
   color: "text.tertiary",
+};
+
+export const messagesLoadingContainer: SxProps = {
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  flex: 1,
+};
+
+export const modalDialog: SxProps = {
+  minWidth: 400,
+};
+
+export const modalTitle: SxProps = {
+  mb: 2,
+};
+
+export const modalInput: SxProps = {
+  mb: 2,
+};
+
+export const modalActions: SxProps = {
+  display: "flex",
+  gap: 1,
+  justifyContent: "flex-end",
+};
+
+export const confirmModalContent: SxProps = {
+  mb: 3,
+};
+
+export const confirmModalUserContainer: SxProps = {
+  display: "flex",
+  alignItems: "center",
+  gap: 2,
+  mb: 2,
+};
+
+export const confirmModalAvatar: SxProps = {
+  width: 56,
+  height: 56,
+  bgcolor: "primary.500",
+};
+
+export const confirmModalUserName: SxProps = {
+  fontWeight: 600,
+};
+
+export const confirmModalUserEmail: SxProps = {
+  color: "text.secondary",
+};
+
+export const confirmModalMessage: SxProps = {
+  color: "text.secondary",
 };
