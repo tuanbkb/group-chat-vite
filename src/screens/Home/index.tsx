@@ -28,6 +28,7 @@ import {
   fetchUserData,
   queryUsersByName,
   updateDisplayName,
+  uploadAvatar,
 } from "../../services/user";
 import * as styles from "./styles";
 
@@ -37,6 +38,7 @@ type Conversation = {
   lastMessage?: string;
   lastSent: number;
   senderName: string;
+  avatar?: string;
 };
 
 type Message = {
@@ -63,21 +65,30 @@ export default function HomeScreen() {
   const [userId, setUserId] = useState<string>("");
   const [openNameModal, setOpenNameModal] = useState(false);
   const [newDisplayName, setNewDisplayName] = useState("");
+  const [openProfilePictureModal, setOpenProfilePictureModal] = useState(false);
+  const [profilePictureUrl, setProfilePictureUrl] = useState("");
+  const [profilePictureType, setProfilePictureType] = useState<
+    "upload" | "url"
+  >("upload");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<
-    Array<{ PK: string; name: string; email: string }>
+    Array<{ PK: string; name: string; email: string; avatar?: string }>
   >([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [userAvatar, setUserAvatar] = useState<string | undefined>(undefined);
   const [openConfirmModal, setOpenConfirmModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<{
     PK: string;
     name: string;
     email: string;
+    avatar?: string;
   } | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
   const selectedConversationRef = useRef<string | null>(null);
+  const conversationsRef = useRef<Conversation[]>([]);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Scroll to bottom of messages
   const scrollToBottom = () => {
@@ -88,6 +99,10 @@ export default function HomeScreen() {
   useEffect(() => {
     selectedConversationRef.current = selectedConversation;
   }, [selectedConversation]);
+
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -146,6 +161,77 @@ export default function HomeScreen() {
     setNewDisplayName("");
   }
 
+  function handleOpenProfilePictureModal() {
+    setOpenProfilePictureModal(true);
+  }
+
+  function handleCloseProfilePictureModal() {
+    setOpenProfilePictureModal(false);
+    setProfilePictureUrl("");
+    setProfilePictureType("upload");
+  }
+
+  function handleSelectFile() {
+    fileInputRef.current?.click();
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        alert("Vui lòng chọn file ảnh");
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert("Kích thước file không được vượt quá 5MB");
+        return;
+      }
+
+      // Convert to base64 for preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfilePictureUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  async function handleSaveProfilePicture() {
+    if (profilePictureUrl.trim()) {
+      // TODO: Add API call to update profile picture
+      console.log("Updating profile picture:");
+      console.log("Type:", profilePictureType);
+      console.log(
+        "Data:",
+        profilePictureType === "upload"
+          ? "Base64 image data"
+          : profilePictureUrl
+      );
+      try {
+        const res = await uploadAvatar(
+          userId,
+          profilePictureUrl,
+          profilePictureType
+        );
+        const avatarUrl = res.url;
+        console.log("Avatar updated. URL:", avatarUrl);
+        setUserAvatar(avatarUrl);
+
+        // if (profilePictureType === "upload") {
+        //   await uploadProfilePicture(userId, profilePictureUrl); // base64 data
+        // } else {
+        //   await updateProfilePictureUrl(userId, profilePictureUrl); // URL
+        // }
+        handleCloseProfilePictureModal();
+      } catch (error) {
+        console.error("Error updating profile picture:", error);
+      }
+    }
+  }
+
   async function handleSaveDisplayName() {
     if (newDisplayName.trim()) {
       // TODO: Add API call to update username in database
@@ -175,9 +261,10 @@ export default function HomeScreen() {
       // const results = await searchUsers(query);
 
       // Mock search results for now
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       const res = await queryUsersByName(query);
-      setSearchResults(res);
+      // Filter out the current user from search results
+      setSearchResults(res.filter((user: any) => user.PK !== `USER#${userId}`));
     } catch (error) {
       console.error("Error searching users:", error);
       setSearchResults([]);
@@ -186,11 +273,31 @@ export default function HomeScreen() {
     }
   }
 
-  function handleUserSelect(PK: string) {
+  async function handleUserSelect(PK: string) {
     const user = searchResults.find((u) => u.PK === PK);
     if (user) {
-      setSelectedUser(user);
-      setOpenConfirmModal(true);
+      const otherUserId = user.PK.slice(5);
+
+      // Check if conversation already exists with this user
+      const existingConv = conversations.find((conv) =>
+        conv.users.includes(otherUserId)
+      );
+
+      if (existingConv) {
+        // Navigate directly to existing conversation
+        console.log(
+          "Conversation already exists, navigating to:",
+          existingConv.chatId
+        );
+        setSearchQuery("");
+        setSearchResults([]);
+        setActiveTab("chat");
+        await handleSelectConversation(existingConv.chatId);
+      } else {
+        // Show confirmation modal for new conversation
+        setSelectedUser(user);
+        setOpenConfirmModal(true);
+      }
     }
   }
 
@@ -203,10 +310,11 @@ export default function HomeScreen() {
     if (!selectedUser) return;
 
     try {
-      // TODO: Replace with actual API call to create conversation
+      const otherUserId = selectedUser.PK.slice(5);
+
+      // Create new conversation
       console.log("Creating conversation with user:", selectedUser);
-      // Example: await createConversation(userId, selectedUser.PK);
-      const res = await createNewChat(userId, selectedUser.PK.slice(5));
+      const res = await createNewChat(userId, otherUserId);
 
       // Close modal and reset states
       handleCloseConfirmModal();
@@ -222,9 +330,6 @@ export default function HomeScreen() {
         )
       );
       await handleSelectConversation(res.conversationId);
-
-      // TODO: Navigate to the new conversation
-      // setSelectedConversation(newConversationId);
     } catch (error) {
       console.error("Error creating conversation:", error);
     }
@@ -247,6 +352,7 @@ export default function HomeScreen() {
           fetchAllChats(uid),
         ]);
         setUsername(data[0].name);
+        setUserAvatar(data[0].avatar);
         setConversations(data[1]);
       } catch (error) {
         console.error("Error fetching username:", error);
@@ -272,49 +378,63 @@ export default function HomeScreen() {
       // Send authentication/join message
     };
 
-    ws.onmessage = (event) => {
+    ws.onmessage = async (event) => {
       try {
         const data = JSON.parse(event.data);
         console.log("WebSocket message received:", data);
 
-        // Handle different message types
-        // if (data.type === "new_message") {
-        //   const newMessage: Message = {
-        //     PK: data.messageId || `msg_${Date.now()}`,
-        //     SK: data.timestamp || Date.now().toString(),
-        //     data: data.content || data.data,
-        //     senderId: data.senderId,
-        //     sentAt: data.sentAt || Date.now(),
-        //   };
         const newMessage: Message = data;
+        const chatId = newMessage.SK.slice(5);
+
         console.log(
           "Selected conversation id:",
           selectedConversationRef.current
         );
-        console.log("New message chat id:", newMessage.SK.slice(5));
-        console.log(
-          "Match?: ",
-          newMessage.SK.slice(5) === selectedConversationRef.current
-        );
-        if (newMessage.SK.slice(5) === selectedConversationRef.current) {
-          console.log("New message for current conversation:", newMessage);
-          setMessageList((prev) => [...prev, newMessage]);
-        }
+        console.log("New message chat id:", chatId);
+        console.log("Match?: ", chatId === selectedConversationRef.current);
 
-        setConversations((prev) => {
-          const updated = prev.map((conv) => {
-            if (conv.chatId === newMessage.SK.slice(5)) {
-              return {
-                ...conv,
-                lastMessage: newMessage.data,
-                lastSent: newMessage.sentAt,
-              };
-            }
-            return conv;
+        // Check if the chat exists in the conversation list
+        const chatExists = conversationsRef.current.find(
+          (conv) => conv.chatId === chatId
+        );
+
+        if (!chatExists) {
+          console.log("Chat not found in conversation list, refetching...");
+          // Refetch conversation list
+          const chats = await fetchAllChats(userId);
+          setConversations(
+            chats.sort(
+              (a: Conversation, b: Conversation) => b.lastSent - a.lastSent
+            )
+          );
+
+          // If this is the selected conversation, refetch messages
+          if (chatId === selectedConversationRef.current) {
+            const messages = await fetchMessageByChatId(chatId);
+            setMessageList(messages);
+          }
+        } else {
+          // Chat exists, update normally
+          if (chatId === selectedConversationRef.current) {
+            console.log("New message for current conversation:", newMessage);
+            setMessageList((prev) => [...prev, newMessage]);
+          }
+
+          setConversations((prev) => {
+            const updated = prev.map((conv) => {
+              if (conv.chatId === chatId) {
+                return {
+                  ...conv,
+                  lastMessage: newMessage.data,
+                  lastSent: newMessage.sentAt,
+                };
+              }
+              return conv;
+            });
+            // Sort by lastSent descending (most recent first)
+            return updated.sort((a, b) => b.lastSent - a.lastSent);
           });
-          // Sort by lastSent descending (most recent first)
-          return updated.sort((a, b) => b.lastSent - a.lastSent);
-        });
+        }
       } catch (error) {
         console.error("Error parsing WebSocket message:", error);
       }
@@ -389,8 +509,8 @@ export default function HomeScreen() {
                   sx={styles.listItemButton}
                 >
                   <Box sx={styles.avatarContainer}>
-                    <Avatar sx={styles.avatar}>
-                      {conv.senderName[0].toUpperCase()}
+                    <Avatar src={conv.avatar} sx={styles.avatar}>
+                      {!conv.avatar && conv.senderName[0].toUpperCase()}
                     </Avatar>
                   </Box>
                   <ListItemContent sx={styles.listItemContent}>
@@ -453,8 +573,8 @@ export default function HomeScreen() {
                       sx={styles.listItemButton}
                     >
                       <Box sx={styles.avatarContainer}>
-                        <Avatar sx={styles.avatar}>
-                          {user.name[0].toUpperCase()}
+                        <Avatar src={user.avatar} sx={styles.avatar}>
+                          {!user.avatar && user.name[0].toUpperCase()}
                         </Avatar>
                       </Box>
                       <ListItemContent sx={styles.listItemContent}>
@@ -494,8 +614,8 @@ export default function HomeScreen() {
         <Dropdown>
           <MenuButton sx={styles.menuButton}>
             <Box sx={styles.userCardContainer}>
-              <Avatar size="lg" sx={styles.userAvatar}>
-                {username?.[0]?.toUpperCase() || "U"}
+              <Avatar size="lg" src={userAvatar} sx={styles.userAvatar}>
+                {!userAvatar && (username?.[0]?.toUpperCase() || "U")}
               </Avatar>
               <Box sx={styles.userInfo}>
                 <Typography level="title-md" sx={styles.username}>
@@ -513,6 +633,12 @@ export default function HomeScreen() {
           <Menu placement="top-end" sx={styles.menu}>
             <MenuItem onClick={handleOpenNameModal} sx={styles.menuItem}>
               📝 Thay đổi tên hiển thị
+            </MenuItem>
+            <MenuItem
+              onClick={handleOpenProfilePictureModal}
+              sx={styles.menuItem}
+            >
+              🖼️ Thay đổi ảnh đại diện
             </MenuItem>
             <MenuItem
               onClick={() => signOut()}
@@ -539,8 +665,9 @@ export default function HomeScreen() {
               >
                 ←
               </IconButton>
-              <Avatar sx={styles.chatHeaderAvatar}>
-                {selectedConv.senderName[0].toUpperCase()}
+              <Avatar src={selectedConv.avatar} sx={styles.chatHeaderAvatar}>
+                {!selectedConv.avatar &&
+                  selectedConv.senderName[0].toUpperCase()}
               </Avatar>
               <Box sx={styles.chatHeaderContent}>
                 <Typography level="title-lg" sx={styles.chatHeaderTitle}>
@@ -655,6 +782,85 @@ export default function HomeScreen() {
         </ModalDialog>
       </Modal>
 
+      {/* Change Profile Picture Modal */}
+      <Modal
+        open={openProfilePictureModal}
+        onClose={handleCloseProfilePictureModal}
+      >
+        <ModalDialog sx={styles.modalDialog}>
+          <Typography level="h4" sx={styles.modalTitle}>
+            🖼️ Thay đổi ảnh đại diện
+          </Typography>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            style={{ display: "none" }}
+          />
+
+          <Tabs
+            value={profilePictureType}
+            onChange={(_, newValue) => {
+              setProfilePictureType(newValue as "upload" | "url");
+              setProfilePictureUrl("");
+            }}
+          >
+            <TabList>
+              <Tab value="upload">📁 Tải lên</Tab>
+              <Tab value="url">🔗 URL</Tab>
+            </TabList>
+
+            <Box sx={{ mt: 2 }}>
+              {profilePictureType === "upload" ? (
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  onClick={handleSelectFile}
+                  fullWidth
+                  size="lg"
+                >
+                  Chọn ảnh từ máy tính
+                </Button>
+              ) : (
+                <Input
+                  placeholder="Nhập URL ảnh đại diện"
+                  value={profilePictureUrl}
+                  onChange={(e) => setProfilePictureUrl(e.target.value)}
+                  size="lg"
+                  autoFocus
+                />
+              )}
+            </Box>
+          </Tabs>
+
+          {profilePictureUrl && (
+            <Box sx={{ display: "flex", justifyContent: "center", my: 2 }}>
+              <Avatar
+                src={profilePictureUrl}
+                sx={{ width: 100, height: 100 }}
+              />
+            </Box>
+          )}
+          <Box sx={styles.modalActions}>
+            <Button
+              variant="plain"
+              color="neutral"
+              onClick={handleCloseProfilePictureModal}
+            >
+              Hủy
+            </Button>
+            <Button
+              onClick={handleSaveProfilePicture}
+              disabled={!profilePictureUrl.trim()}
+            >
+              Lưu
+            </Button>
+          </Box>
+        </ModalDialog>
+      </Modal>
+
       {/* Confirm Create Conversation Modal */}
       <Modal open={openConfirmModal} onClose={handleCloseConfirmModal}>
         <ModalDialog sx={styles.modalDialog}>
@@ -664,8 +870,11 @@ export default function HomeScreen() {
           {selectedUser && (
             <Box sx={styles.confirmModalContent}>
               <Box sx={styles.confirmModalUserContainer}>
-                <Avatar sx={styles.confirmModalAvatar}>
-                  {selectedUser.name[0].toUpperCase()}
+                <Avatar
+                  src={selectedUser.avatar}
+                  sx={styles.confirmModalAvatar}
+                >
+                  {!selectedUser.avatar && selectedUser.name[0].toUpperCase()}
                 </Avatar>
                 <Box>
                   <Typography level="title-lg" sx={styles.confirmModalUserName}>

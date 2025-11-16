@@ -14,6 +14,7 @@ export const fetchAllChats = async (userId: string): Promise<any> => {
           const senderid = chat.users.filter((u: string) => u !== userId);
           const sender = await fetchUserData(senderid[0]);
           chat.senderName = sender.name;
+          chat.avatar = sender.avatar;
       }));
     }
     console.log("Chats fetched:", chats);

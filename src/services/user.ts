@@ -1,4 +1,4 @@
-import { apiGet, apiPut } from "./apiClient";
+import { apiGet, apiPost, apiPut } from "./apiClient";
 
 export const fetchUserData = async (userId: string): Promise<any> => {
   try {
@@ -55,6 +55,21 @@ export const queryUsersByEmail = async (q: string): Promise<any> => {
     return users;
   } catch (error) {
     console.error("Error querying users by email:", error);
+    throw error;
+  }
+};
+
+export const uploadAvatar = async (userId: string, avatarData: string, type: "upload" | "url"): Promise<any> => {
+  try {
+    const response = await apiPost("chatApi", "/image", {
+      userId,
+      imageData: avatarData,
+      type,
+    });
+    console.log("Avatar uploaded:", response);
+    return response;
+  } catch (error) {
+    console.error("Error uploading avatar:", error);
     throw error;
   }
 };
