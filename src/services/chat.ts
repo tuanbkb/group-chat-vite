@@ -17,7 +17,6 @@ export const fetchAllChats = async (userId: string): Promise<any> => {
           chat.avatar = sender.avatar;
       }));
     }
-    console.log("Chats fetched:", chats);
     return chats;
   } catch (error) {
     console.error("Error fetching chats:", error);

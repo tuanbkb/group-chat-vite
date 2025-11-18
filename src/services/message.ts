@@ -10,7 +10,6 @@ export const fetchMessageByChatId = async (chatId: string): Promise<any> => {
     if (Array.isArray(messages)) {
       messages.sort((a: any, b: any) => a.sentAt - b.sentAt);
     }
-    console.log("Messages fetched:", messages);
     return messages;
   } catch (error) {
     console.error("Error fetching messages:", error);

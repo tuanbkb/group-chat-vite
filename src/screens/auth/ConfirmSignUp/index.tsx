@@ -62,7 +62,6 @@ export default function ConfirmSignUpScreen() {
       // Replace this with your auth call (e.g., AWS Amplify confirmSignUp)
       // import { confirmSignUp } from "aws-amplify/auth";
       await confirmSignUp({ username: email, confirmationCode: code });
-      console.log("Confirming sign up for", email, "with code", code);
 
       await signIn({ username: email, password: password });
     } catch (err: any) {
@@ -90,7 +89,6 @@ export default function ConfirmSignUpScreen() {
       // Replace this with your auth call (e.g., AWS Amplify resendSignUpCode)
       // import { resendSignUpCode } from "aws-amplify/auth";
       await resendSignUpCode({ username: email });
-      console.log("Resending code to", email);
 
       setResendSuccess(true);
     } catch (err: any) {

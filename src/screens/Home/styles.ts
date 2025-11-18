@@ -518,6 +518,10 @@ export const confirmModalAvatar: SxProps = {
   width: 56,
   height: 56,
   bgcolor: "primary.500",
+  color: "white",
+  boxShadow: "md",
+  border: "2px solid",
+  borderColor: "primary.500",
 };
 
 export const confirmModalUserName: SxProps = {

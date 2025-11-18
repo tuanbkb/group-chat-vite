@@ -62,7 +62,6 @@ export default function SignInScreen() {
         username: form.email,
         password: form.password,
       });
-      console.log(signInRes);
       if (signInRes.nextStep?.signInStep === "CONFIRM_SIGN_UP") {
         await resendSignUpCode({ username: form.email });
         navigate(

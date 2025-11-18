@@ -56,7 +56,6 @@ export default function ForgetPasswordScreen() {
       // Placeholder for real password reset logic.
       // Replace this with your auth call (Amplify, Firebase, custom API, etc.).
       await new Promise((resolve) => setTimeout(resolve, 700));
-      console.log("Password reset requested for", form.email);
       setSuccess(
         "Đã gửi liên kết đặt lại mật khẩu đến email của bạn. Vui lòng kiểm tra hộp thư."
       );

@@ -1,29 +1,19 @@
 import { CircularProgress } from "@mui/joy";
 import Avatar from "@mui/joy/Avatar";
+import Divider from "@mui/joy/Divider";
 import {
   MdChat,
-  MdSearch,
-  MdEdit,
-  MdImage,
-  MdLogout,
-  MdArrowBack,
   MdSend,
   MdUploadFile,
   MdLink,
+  MdEdit,
+  MdImage,
+  MdSearch,
 } from "react-icons/md";
 import Box from "@mui/joy/Box";
 import Button from "@mui/joy/Button";
-import Divider from "@mui/joy/Divider";
-import Dropdown from "@mui/joy/Dropdown";
 import IconButton from "@mui/joy/IconButton";
 import Input from "@mui/joy/Input";
-import List from "@mui/joy/List";
-import ListItem from "@mui/joy/ListItem";
-import ListItemButton from "@mui/joy/ListItemButton";
-import ListItemContent from "@mui/joy/ListItemContent";
-import Menu from "@mui/joy/Menu";
-import MenuButton from "@mui/joy/MenuButton";
-import MenuItem from "@mui/joy/MenuItem";
 import Modal from "@mui/joy/Modal";
 import ModalDialog from "@mui/joy/ModalDialog";
 import Sheet from "@mui/joy/Sheet";
@@ -41,28 +31,13 @@ import {
   updateDisplayName,
   uploadAvatar,
 } from "../../services/user";
-import {
-  formatTimestamp,
-  formatMessageTimestamp,
-} from "../../utils/formatTimestamp";
+import type { Conversation, Message } from "./types";
+import ConversationList from "./components/ConversationList";
+import SearchTab from "./components/SearchTab";
+import UserCard from "./components/UserCard";
+import { ChatHeader, MessageList } from "./components/ChatArea";
+import { useWebSocket } from "./hooks/useWebSocket";
 import * as styles from "./styles";
-
-type Conversation = {
-  chatId: string;
-  users: string[];
-  lastMessage?: string;
-  lastSent: number;
-  senderName: string;
-  avatar?: string;
-};
-
-type Message = {
-  PK: string;
-  SK: string;
-  data: string;
-  senderId: string;
-  sentAt: number;
-};
 
 export default function HomeScreen() {
   useEffect(() => {
@@ -95,6 +70,7 @@ export default function HomeScreen() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [userAvatar, setUserAvatar] = useState<string | undefined>(undefined);
   const [openConfirmModal, setOpenConfirmModal] = useState(false);
+  const [creatingConversation, setCreatingConversation] = useState(false);
   const [selectedUser, setSelectedUser] = useState<{
     PK: string;
     name: string;
@@ -102,9 +78,6 @@ export default function HomeScreen() {
     avatar?: string;
   } | null>(null);
 
-  const wsRef = useRef<WebSocket | null>(null);
-  const selectedConversationRef = useRef<string | null>(null);
-  const conversationsRef = useRef<Conversation[]>([]);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -113,14 +86,14 @@ export default function HomeScreen() {
     messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
   };
 
-  // Keep ref in sync with state
-  useEffect(() => {
-    selectedConversationRef.current = selectedConversation;
-  }, [selectedConversation]);
-
-  useEffect(() => {
-    conversationsRef.current = conversations;
-  }, [conversations]);
+  // WebSocket hook for real-time messages
+  useWebSocket({
+    userId,
+    selectedConversation,
+    conversations,
+    setConversations,
+    setMessageList,
+  });
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -151,9 +124,7 @@ export default function HomeScreen() {
     setMessage("");
 
     // Handle sending message
-    console.log("Before sending - selectedConversation:", selectedConversation);
     await sendMessage(selectedConversation!, userId, messageText);
-    console.log("After sending - selectedConversation:", selectedConversation);
 
     // Scroll to bottom after sending
     setTimeout(scrollToBottom, 100);
@@ -167,9 +138,8 @@ export default function HomeScreen() {
     setMessagesLoading(true);
     setMessageList([]);
     try {
-      const messageList = await fetchMessageByChatId(id);
-      setMessageList(messageList);
-      console.log("Fetched messages for chatId", id, ":", messageList);
+      const messages = await fetchMessageByChatId(id);
+      setMessageList(messages);
     } catch (error) {
       console.error("Error fetching messages for chatId", id, ":", error);
     } finally {
@@ -233,14 +203,6 @@ export default function HomeScreen() {
   async function handleSaveProfilePicture() {
     if (profilePictureUrl.trim()) {
       // TODO: Add API call to update profile picture
-      console.log("Updating profile picture:");
-      console.log("Type:", profilePictureType);
-      console.log(
-        "Data:",
-        profilePictureType === "upload"
-          ? "Base64 image data"
-          : profilePictureUrl
-      );
       try {
         const res = await uploadAvatar(
           userId,
@@ -248,7 +210,6 @@ export default function HomeScreen() {
           profilePictureType
         );
         const avatarUrl = res.url;
-        console.log("Avatar updated. URL:", avatarUrl);
         setUserAvatar(avatarUrl);
 
         // if (profilePictureType === "upload") {
@@ -266,7 +227,6 @@ export default function HomeScreen() {
   async function handleSaveDisplayName() {
     if (newDisplayName.trim()) {
       // TODO: Add API call to update username in database
-      console.log("Updating display name to:", newDisplayName.trim());
       try {
         await updateDisplayName(userId, newDisplayName.trim());
         setUsername(newDisplayName.trim());
@@ -316,10 +276,6 @@ export default function HomeScreen() {
 
       if (existingConv) {
         // Navigate directly to existing conversation
-        console.log(
-          "Conversation already exists, navigating to:",
-          existingConv.chatId
-        );
         setSearchQuery("");
         setSearchResults([]);
         setActiveTab("chat");
@@ -335,16 +291,17 @@ export default function HomeScreen() {
   function handleCloseConfirmModal() {
     setOpenConfirmModal(false);
     setSelectedUser(null);
+    setCreatingConversation(false);
   }
 
   async function handleConfirmCreateConversation() {
-    if (!selectedUser) return;
+    if (!selectedUser || creatingConversation) return;
 
     try {
+      setCreatingConversation(true);
       const otherUserId = selectedUser.PK.slice(5);
 
       // Create new conversation
-      console.log("Creating conversation with user:", selectedUser);
       const res = await createNewChat(userId, otherUserId);
 
       // Close modal and reset states
@@ -363,6 +320,8 @@ export default function HomeScreen() {
       await handleSelectConversation(res.conversationId);
     } catch (error) {
       console.error("Error creating conversation:", error);
+    } finally {
+      setCreatingConversation(false);
     }
   }
 
@@ -392,119 +351,6 @@ export default function HomeScreen() {
     };
     fetchHomeData();
   }, []);
-
-  // WebSocket connection for real-time messages
-  useEffect(() => {
-    if (!userId) return;
-
-    // TODO: Replace with your actual WebSocket URL
-    const WS_URL = `wss://za4oejdtm4.execute-api.ap-southeast-1.amazonaws.com/production?userId=${userId}`;
-
-    // Create WebSocket connection
-    const ws = new WebSocket(WS_URL);
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      console.log("WebSocket connected!");
-      // Send authentication/join message
-    };
-
-    ws.onmessage = async (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log("WebSocket message received:", data);
-
-        const newMessage: Message = data;
-        const chatId = newMessage.SK.slice(5);
-
-        console.log(
-          "Selected conversation id:",
-          selectedConversationRef.current
-        );
-        console.log("New message chat id:", chatId);
-        console.log("Match?: ", chatId === selectedConversationRef.current);
-
-        // Check if the chat exists in the conversation list
-        const chatExists = conversationsRef.current.find(
-          (conv) => conv.chatId === chatId
-        );
-
-        if (!chatExists) {
-          console.log("Chat not found in conversation list, refetching...");
-          // Refetch conversation list
-          const chats = await fetchAllChats(userId);
-          setConversations(
-            chats.sort(
-              (a: Conversation, b: Conversation) => b.lastSent - a.lastSent
-            )
-          );
-
-          // If this is the selected conversation, refetch messages
-          if (chatId === selectedConversationRef.current) {
-            const messages = await fetchMessageByChatId(chatId);
-            setMessageList(messages);
-          }
-        } else {
-          // Chat exists, update normally
-          if (chatId === selectedConversationRef.current) {
-            console.log("New message for current conversation:", newMessage);
-            // Replace temp message or add new message, avoiding duplicates
-            setMessageList((prev) => {
-              // Check if this message already exists (by PK or if it's very recent from same sender)
-              const existingIndex = prev.findIndex(
-                (msg) =>
-                  msg.PK === newMessage.PK ||
-                  (msg.senderId === newMessage.senderId &&
-                    msg.data === newMessage.data &&
-                    Math.abs(msg.sentAt - newMessage.sentAt) < 2000) // Within 2 seconds
-              );
-
-              if (existingIndex !== -1) {
-                // Replace the existing/temp message with the real one
-                const updated = [...prev];
-                updated[existingIndex] = newMessage;
-                return updated;
-              } else {
-                // Add new message
-                return [...prev, newMessage];
-              }
-            });
-          }
-
-          setConversations((prev) => {
-            const updated = prev.map((conv) => {
-              if (conv.chatId === chatId) {
-                return {
-                  ...conv,
-                  lastMessage: newMessage.data,
-                  lastSent: newMessage.sentAt,
-                };
-              }
-              return conv;
-            });
-            // Sort by lastSent descending (most recent first)
-            return updated.sort((a, b) => b.lastSent - a.lastSent);
-          });
-        }
-      } catch (error) {
-        console.error("Error parsing WebSocket message:", error);
-      }
-    };
-
-    ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
-    };
-
-    ws.onclose = () => {
-      console.log("WebSocket disconnected!");
-    };
-
-    // Cleanup function
-    return () => {
-      ws.close();
-      wsRef.current = null;
-    };
-  }, [userId]);
 
   if (loading) {
     return (
@@ -564,155 +410,32 @@ export default function HomeScreen() {
 
         {/* Tab Content */}
         {activeTab === "chat" && (
-          <List sx={styles.conversationList}>
-            {conversations.map((conv) => (
-              <ListItem key={conv.chatId} sx={styles.listItem}>
-                <ListItemButton
-                  selected={selectedConversation === conv.chatId}
-                  onClick={() => handleSelectConversation(conv.chatId)}
-                  sx={styles.listItemButton}
-                >
-                  <Box sx={styles.avatarContainer}>
-                    <Avatar src={conv.avatar} sx={styles.avatar}>
-                      {!conv.avatar && conv.senderName[0].toUpperCase()}
-                    </Avatar>
-                  </Box>
-                  <ListItemContent sx={styles.listItemContent}>
-                    <Box sx={styles.conversationHeader}>
-                      <Typography level="title-md" sx={styles.conversationName}>
-                        {conv.senderName}
-                      </Typography>
-                      {conv.lastSent !== 0 && (
-                        <Typography
-                          level="body-xs"
-                          sx={styles.conversationTimestamp}
-                        >
-                          {formatTimestamp(conv.lastSent)}
-                        </Typography>
-                      )}
-                    </Box>
-                    <Box sx={styles.conversationMessageRow}>
-                      <Typography
-                        level="body-sm"
-                        sx={styles.conversationMessage}
-                      >
-                        {conv.lastMessage}
-                      </Typography>
-                    </Box>
-                  </ListItemContent>
-                </ListItemButton>
-              </ListItem>
-            ))}
-          </List>
+          <ConversationList
+            conversations={conversations}
+            selectedConversation={selectedConversation}
+            onSelectConversation={handleSelectConversation}
+          />
         )}
 
         {activeTab === "search" && (
-          <Box sx={styles.searchTabContent}>
-            <Box sx={styles.searchBarContainer}>
-              <Input
-                placeholder="Tìm kiếm theo tên..."
-                value={searchQuery}
-                onChange={(e) => handleSearch(e.target.value)}
-                sx={styles.searchInput}
-                startDecorator={<MdSearch />}
-              />
-            </Box>
-
-            {searchLoading ? (
-              <Box sx={styles.searchLoadingContainer}>
-                <CircularProgress size="sm" />
-              </Box>
-            ) : searchQuery && searchResults.length === 0 ? (
-              <Box sx={styles.emptySearchResults}>
-                <Typography level="body-md" sx={{ color: "text.secondary" }}>
-                  Không tìm thấy kết quả nào
-                </Typography>
-              </Box>
-            ) : searchResults.length > 0 ? (
-              <List sx={styles.searchResultsList}>
-                {searchResults.map((user) => (
-                  <ListItem key={user.PK} sx={styles.listItem}>
-                    <ListItemButton
-                      onClick={() => handleUserSelect(user.PK)}
-                      sx={styles.listItemButton}
-                    >
-                      <Box sx={styles.avatarContainer}>
-                        <Avatar src={user.avatar} sx={styles.avatar}>
-                          {!user.avatar && user.name[0].toUpperCase()}
-                        </Avatar>
-                      </Box>
-                      <ListItemContent sx={styles.listItemContent}>
-                        <Typography
-                          level="title-md"
-                          sx={styles.conversationName}
-                        >
-                          {user.name}
-                        </Typography>
-                        <Typography
-                          level="body-sm"
-                          sx={{ color: "text.secondary" }}
-                        >
-                          {user.email}
-                        </Typography>
-                      </ListItemContent>
-                    </ListItemButton>
-                  </ListItem>
-                ))}
-              </List>
-            ) : (
-              <Box sx={styles.emptyTabContent}>
-                <Typography level="h4" sx={styles.emptyTabTitle}>
-                  <MdSearch style={{ marginRight: 6 }} /> Tìm kiếm người dùng
-                </Typography>
-                <Typography level="body-sm" sx={styles.emptyTabSubtitle}>
-                  Nhập tên để tìm kiếm
-                </Typography>
-              </Box>
-            )}
-          </Box>
+          <SearchTab
+            searchQuery={searchQuery}
+            searchResults={searchResults}
+            searchLoading={searchLoading}
+            onSearch={handleSearch}
+            onUserSelect={handleUserSelect}
+          />
         )}
 
         <Divider sx={styles.divider} />
 
         {/* User Card */}
-        <Dropdown>
-          <MenuButton sx={styles.menuButton}>
-            <Box sx={styles.userCardContainer}>
-              <Avatar size="lg" src={userAvatar} sx={styles.userAvatar}>
-                {!userAvatar && (username?.[0]?.toUpperCase() || "U")}
-              </Avatar>
-              <Box sx={styles.userInfo}>
-                <Typography level="title-md" sx={styles.username}>
-                  {username || "User"}
-                </Typography>
-                <Box sx={styles.statusContainer}>
-                  <Box sx={styles.statusIndicator} />
-                  <Typography level="body-xs" sx={styles.statusText}>
-                    Đang hoạt động
-                  </Typography>
-                </Box>
-              </Box>
-            </Box>
-          </MenuButton>
-          <Menu placement="top-end" sx={styles.menu}>
-            <MenuItem onClick={handleOpenNameModal} sx={styles.menuItem}>
-              <MdEdit style={{ marginRight: 8 }} /> Thay đổi tên hiển thị
-            </MenuItem>
-            <MenuItem
-              onClick={handleOpenProfilePictureModal}
-              sx={styles.menuItem}
-            >
-              <MdImage style={{ marginRight: 8 }} /> Thay đổi ảnh đại diện
-            </MenuItem>
-            <MenuItem
-              onClick={() => signOut()}
-              color="danger"
-              sx={styles.menuItem}
-            >
-              <MdLogout style={{ marginRight: 8 }} /> Đăng xuất
-            </MenuItem>
-          </Menu>
-        </Dropdown>
+        <UserCard
+          username={username}
+          userAvatar={userAvatar}
+          onOpenNameModal={handleOpenNameModal}
+          onOpenProfilePictureModal={handleOpenProfilePictureModal}
+        />
       </Sheet>
 
       {/* Right Panel - Chat Area */}
@@ -720,68 +443,16 @@ export default function HomeScreen() {
         {selectedConv ? (
           <>
             {/* Chat Header */}
-            <Sheet sx={styles.chatHeader}>
-              <IconButton
-                sx={styles.backButton}
-                onClick={handleBackToList}
-                variant="soft"
-                color="neutral"
-              >
-                <MdArrowBack />
-              </IconButton>
-              <Avatar src={selectedConv.avatar} sx={styles.chatHeaderAvatar}>
-                {!selectedConv.avatar &&
-                  selectedConv.senderName[0].toUpperCase()}
-              </Avatar>
-              <Box sx={styles.chatHeaderContent}>
-                <Typography level="title-lg" sx={styles.chatHeaderTitle}>
-                  {selectedConv.senderName}
-                </Typography>
-              </Box>
-            </Sheet>
+            <ChatHeader conversation={selectedConv} onBack={handleBackToList} />
 
             {/* Messages Area */}
-            <Box sx={styles.messagesArea}>
-              {messagesLoading ? (
-                <Box sx={styles.messagesLoadingContainer}>
-                  <CircularProgress />
-                </Box>
-              ) : (
-                messageList.map((msg) => (
-                  <Box
-                    key={msg.PK}
-                    sx={styles.messageContainer(msg.senderId === userId)}
-                  >
-                    <Box sx={styles.messageContent}>
-                      {!(msg.senderId === userId) && (
-                        <Typography level="body-xs" sx={styles.messageSender}>
-                          {selectedConv.senderName}
-                        </Typography>
-                      )}
-                      <Sheet
-                        variant={msg.senderId === userId ? "solid" : "outlined"}
-                        color={msg.senderId === userId ? "primary" : "neutral"}
-                        sx={styles.messageSheet(msg.senderId === userId)}
-                      >
-                        <Typography
-                          level="body-md"
-                          sx={styles.messageText(msg.senderId === userId)}
-                        >
-                          {msg.data}
-                        </Typography>
-                      </Sheet>
-                      <Typography
-                        level="body-xs"
-                        sx={styles.messageTimestamp(msg.senderId === userId)}
-                      >
-                        {formatMessageTimestamp(msg.sentAt)}
-                      </Typography>
-                    </Box>
-                  </Box>
-                ))
-              )}
-              <div ref={messagesEndRef} />
-            </Box>
+            <MessageList
+              messages={messageList}
+              userId={userId}
+              senderName={selectedConv.senderName}
+              loading={messagesLoading}
+              messagesEndRef={messagesEndRef}
+            />
 
             {/* Message Input */}
             <Sheet sx={styles.messageInputContainer}>
@@ -963,10 +634,15 @@ export default function HomeScreen() {
               variant="plain"
               color="neutral"
               onClick={handleCloseConfirmModal}
+              disabled={creatingConversation}
             >
               Hủy
             </Button>
-            <Button onClick={handleConfirmCreateConversation}>
+            <Button
+              onClick={handleConfirmCreateConversation}
+              loading={creatingConversation}
+              disabled={creatingConversation}
+            >
               Tạo cuộc trò chuyện
             </Button>
           </Box>

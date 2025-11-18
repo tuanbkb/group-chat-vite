@@ -85,13 +85,11 @@ export default function SignUpScreen() {
       // Placeholder for real auth logic.
       // Replace this with your auth call (Amplify, Firebase, custom API, etc.).
       // import { signUp } from "aws-amplify/auth";
-      const res = await signUp({
+      await signUp({
         username: form.email,
         password: form.password,
         options: { userAttributes: { name: form.name } },
       });
-      console.log("Signing up with", form);
-      console.log("Sign up response:", res);
       // On success: redirect to confirm signup screen
       navigate(
         `/confirm-signup?email=${encodeURIComponent(form.email)}&password=${encodeURIComponent(form.password)}`

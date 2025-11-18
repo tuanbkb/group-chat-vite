@@ -7,7 +7,6 @@ export const fetchUserData = async (userId: string): Promise<any> => {
         userId
       },
     });
-    console.log("User document fetched:", userDoc);
     return userDoc;
   } catch (error) {
     console.error("Error fetching username:", error);
@@ -21,7 +20,6 @@ export const updateDisplayName = async (userId: string, newDisplayName: string):
       userId: userId,
       name: newDisplayName,
     });
-    console.log("Display name updated:", response);
     return response;
   } catch (error) {
     console.error("Error updating display name:", error);
@@ -36,7 +34,6 @@ export const queryUsersByName = async (q: string): Promise<any> => {
         q,
       },
     });
-    console.log("Users fetched by name:", users);
     return users;
   } catch (error) {
     console.error("Error querying users by name:", error);
@@ -51,7 +48,6 @@ export const queryUsersByEmail = async (q: string): Promise<any> => {
         q,
       },
     });
-    console.log("Users fetched by email:", users);
     return users;
   } catch (error) {
     console.error("Error querying users by email:", error);
@@ -66,7 +62,6 @@ export const uploadAvatar = async (userId: string, avatarData: string, type: "up
       imageData: avatarData,
       type,
     });
-    console.log("Avatar uploaded:", response);
     return response;
   } catch (error) {
     console.error("Error uploading avatar:", error);
