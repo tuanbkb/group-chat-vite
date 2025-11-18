@@ -3,6 +3,7 @@ import type { SxProps } from "@mui/joy/styles/types";
 export const containerStyles: SxProps = {
   minHeight: "100vh",
   display: "flex",
+  flexDirection: "column",
   alignItems: "center",
   justifyContent: "center",
   p: 2,

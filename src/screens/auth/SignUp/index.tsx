@@ -8,6 +8,7 @@ import Sheet from "@mui/joy/Sheet";
 import Typography from "@mui/joy/Typography";
 import React, { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router";
+import { MdPersonAdd } from "react-icons/md";
 import * as styles from "./styles";
 import { signUp } from "aws-amplify/auth";
 
@@ -109,10 +110,40 @@ export default function SignUpScreen() {
 
   return (
     <Box sx={styles.containerStyles}>
+      {/* Logo and App Name - Positioned at top of page */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          mb: 3,
+        }}
+      >
+        <img
+          src="/logo.svg"
+          alt="AWS Chat App Logo"
+          style={{ width: 40, height: 40, marginRight: 10 }}
+        />
+        <Typography
+          level="h2"
+          sx={{ fontWeight: "bold", color: "primary.main" }}
+        >
+          AWS Chat App
+        </Typography>
+      </Box>
+
       <Sheet variant="outlined" sx={styles.sheetStyles}>
         <Box sx={styles.headerBoxStyles}>
           <Typography level="h3" component="h1" sx={styles.titleStyles}>
-            🚀 Tạo tài khoản
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <MdPersonAdd style={{ marginRight: 8 }} /> Tạo tài khoản
+            </Box>
           </Typography>
           <Typography level="body-md" sx={{ mt: 1, color: "text.secondary" }}>
             Bắt đầu hành trình của bạn với chúng tôi ngay hôm nay.

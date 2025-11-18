@@ -1,5 +1,16 @@
 import { CircularProgress } from "@mui/joy";
 import Avatar from "@mui/joy/Avatar";
+import {
+  MdChat,
+  MdSearch,
+  MdEdit,
+  MdImage,
+  MdLogout,
+  MdArrowBack,
+  MdSend,
+  MdUploadFile,
+  MdLink,
+} from "react-icons/md";
 import Box from "@mui/joy/Box";
 import Button from "@mui/joy/Button";
 import Divider from "@mui/joy/Divider";
@@ -30,6 +41,10 @@ import {
   updateDisplayName,
   uploadAvatar,
 } from "../../services/user";
+import {
+  formatTimestamp,
+  formatMessageTimestamp,
+} from "../../utils/formatTimestamp";
 import * as styles from "./styles";
 
 type Conversation = {
@@ -51,7 +66,7 @@ type Message = {
 
 export default function HomeScreen() {
   useEffect(() => {
-    document.title = "Chat App - Trang chủ";
+    document.title = "AWS Chat App - Trang chủ";
   }, []);
   const [selectedConversation, setSelectedConversation] = useState<
     string | null
@@ -121,12 +136,25 @@ export default function HomeScreen() {
   async function handleSendMessage(e: React.FormEvent) {
     e.preventDefault();
     if (!message.trim()) return;
+
+    const messageText = message.trim();
+    const tempMessage: Message = {
+      PK: `temp_${Date.now()}`,
+      SK: `CHAT#${selectedConversation}`,
+      data: messageText,
+      senderId: userId,
+      sentAt: Date.now(),
+    };
+
+    // Add message to UI immediately for instant feedback
+    setMessageList((prev) => [...prev, tempMessage]);
+    setMessage("");
+
     // Handle sending message
     console.log("Before sending - selectedConversation:", selectedConversation);
-    await sendMessage(selectedConversation!, userId, message.trim());
+    await sendMessage(selectedConversation!, userId, messageText);
     console.log("After sending - selectedConversation:", selectedConversation);
 
-    setMessage("");
     // Scroll to bottom after sending
     setTimeout(scrollToBottom, 100);
   }
@@ -420,7 +448,27 @@ export default function HomeScreen() {
           // Chat exists, update normally
           if (chatId === selectedConversationRef.current) {
             console.log("New message for current conversation:", newMessage);
-            setMessageList((prev) => [...prev, newMessage]);
+            // Replace temp message or add new message, avoiding duplicates
+            setMessageList((prev) => {
+              // Check if this message already exists (by PK or if it's very recent from same sender)
+              const existingIndex = prev.findIndex(
+                (msg) =>
+                  msg.PK === newMessage.PK ||
+                  (msg.senderId === newMessage.senderId &&
+                    msg.data === newMessage.data &&
+                    Math.abs(msg.sentAt - newMessage.sentAt) < 2000) // Within 2 seconds
+              );
+
+              if (existingIndex !== -1) {
+                // Replace the existing/temp message with the real one
+                const updated = [...prev];
+                updated[existingIndex] = newMessage;
+                return updated;
+              } else {
+                // Add new message
+                return [...prev, newMessage];
+              }
+            });
           }
 
           setConversations((prev) => {
@@ -477,9 +525,22 @@ export default function HomeScreen() {
       {/* Left Panel - Conversations List */}
       <Sheet variant="soft" sx={styles.leftPanel(showSidebar)}>
         {/* Header */}
-        <Box sx={styles.header}>
+        <Box
+          sx={{
+            ...styles.header,
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 2,
+          }}
+        >
+          <img
+            src="/logo.svg"
+            alt="Chat App Logo"
+            style={{ width: 40, height: 40 }}
+          />
           <Typography level="h3" color="primary" sx={styles.headerTitle}>
-            💬 Tin nhắn
+            AWS Chat App
           </Typography>
         </Box>
 
@@ -492,10 +553,10 @@ export default function HomeScreen() {
           >
             <TabList size="sm" sx={styles.tabList}>
               <Tab value="chat" sx={styles.tab}>
-                💬 Trò chuyện
+                <MdChat style={{ marginRight: 6 }} /> Trò chuyện
               </Tab>
               <Tab value="search" sx={styles.tab}>
-                🔍 Tìm kiếm
+                <MdSearch style={{ marginRight: 6 }} /> Tìm kiếm
               </Tab>
             </TabList>
           </Tabs>
@@ -526,7 +587,7 @@ export default function HomeScreen() {
                           level="body-xs"
                           sx={styles.conversationTimestamp}
                         >
-                          {new Date(conv.lastSent).toLocaleTimeString()}
+                          {formatTimestamp(conv.lastSent)}
                         </Typography>
                       )}
                     </Box>
@@ -553,7 +614,7 @@ export default function HomeScreen() {
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
                 sx={styles.searchInput}
-                startDecorator={<Typography>🔍</Typography>}
+                startDecorator={<MdSearch />}
               />
             </Box>
 
@@ -601,7 +662,7 @@ export default function HomeScreen() {
             ) : (
               <Box sx={styles.emptyTabContent}>
                 <Typography level="h4" sx={styles.emptyTabTitle}>
-                  🔍 Tìm kiếm người dùng
+                  <MdSearch style={{ marginRight: 6 }} /> Tìm kiếm người dùng
                 </Typography>
                 <Typography level="body-sm" sx={styles.emptyTabSubtitle}>
                   Nhập tên để tìm kiếm
@@ -635,20 +696,20 @@ export default function HomeScreen() {
           </MenuButton>
           <Menu placement="top-end" sx={styles.menu}>
             <MenuItem onClick={handleOpenNameModal} sx={styles.menuItem}>
-              📝 Thay đổi tên hiển thị
+              <MdEdit style={{ marginRight: 8 }} /> Thay đổi tên hiển thị
             </MenuItem>
             <MenuItem
               onClick={handleOpenProfilePictureModal}
               sx={styles.menuItem}
             >
-              🖼️ Thay đổi ảnh đại diện
+              <MdImage style={{ marginRight: 8 }} /> Thay đổi ảnh đại diện
             </MenuItem>
             <MenuItem
               onClick={() => signOut()}
               color="danger"
               sx={styles.menuItem}
             >
-              🚪 Đăng xuất
+              <MdLogout style={{ marginRight: 8 }} /> Đăng xuất
             </MenuItem>
           </Menu>
         </Dropdown>
@@ -666,7 +727,7 @@ export default function HomeScreen() {
                 variant="soft"
                 color="neutral"
               >
-                ←
+                <MdArrowBack />
               </IconButton>
               <Avatar src={selectedConv.avatar} sx={styles.chatHeaderAvatar}>
                 {!selectedConv.avatar &&
@@ -713,7 +774,7 @@ export default function HomeScreen() {
                         level="body-xs"
                         sx={styles.messageTimestamp(msg.senderId === userId)}
                       >
-                        {new Date(msg.sentAt).toLocaleTimeString()}
+                        {formatMessageTimestamp(msg.sentAt)}
                       </Typography>
                     </Box>
                   </Box>
@@ -739,7 +800,7 @@ export default function HomeScreen() {
                     size="lg"
                     sx={styles.sendButton}
                   >
-                    ➤
+                    <MdSend />
                   </IconButton>
                 </Box>
               </form>
@@ -758,7 +819,7 @@ export default function HomeScreen() {
       <Modal open={openNameModal} onClose={handleCloseNameModal}>
         <ModalDialog sx={styles.modalDialog}>
           <Typography level="h4" sx={styles.modalTitle}>
-            📝 Thay đổi tên hiển thị
+            <MdEdit style={{ marginRight: 8 }} /> Thay đổi tên hiển thị
           </Typography>
           <Input
             placeholder="Nhập tên hiển thị mới"
@@ -792,7 +853,7 @@ export default function HomeScreen() {
       >
         <ModalDialog sx={styles.modalDialog}>
           <Typography level="h4" sx={styles.modalTitle}>
-            🖼️ Thay đổi ảnh đại diện
+            <MdImage style={{ marginRight: 8 }} /> Thay đổi ảnh đại diện
           </Typography>
 
           <input
@@ -811,8 +872,12 @@ export default function HomeScreen() {
             }}
           >
             <TabList>
-              <Tab value="upload">📁 Tải lên</Tab>
-              <Tab value="url">🔗 URL</Tab>
+              <Tab value="upload">
+                <MdUploadFile style={{ marginRight: 6 }} /> Tải lên
+              </Tab>
+              <Tab value="url">
+                <MdLink style={{ marginRight: 6 }} /> URL
+              </Tab>
             </TabList>
 
             <Box sx={{ mt: 2 }}>
@@ -868,7 +933,7 @@ export default function HomeScreen() {
       <Modal open={openConfirmModal} onClose={handleCloseConfirmModal}>
         <ModalDialog sx={styles.modalDialog}>
           <Typography level="h4" sx={styles.modalTitle}>
-            💬 Tạo cuộc trò chuyện
+            <MdChat style={{ marginRight: 8 }} /> Tạo cuộc trò chuyện
           </Typography>
           {selectedUser && (
             <Box sx={styles.confirmModalContent}>

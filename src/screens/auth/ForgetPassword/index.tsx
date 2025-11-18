@@ -8,6 +8,7 @@ import Sheet from "@mui/joy/Sheet";
 import Typography from "@mui/joy/Typography";
 import React, { useEffect, useState } from "react";
 import { NavLink } from "react-router";
+import { MdLock } from "react-icons/md";
 import * as styles from "./styles";
 
 type ForgetPasswordForm = {
@@ -71,10 +72,40 @@ export default function ForgetPasswordScreen() {
 
   return (
     <Box sx={styles.containerStyles}>
+      {/* Logo and App Name - Positioned at top of page */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          mb: 3,
+        }}
+      >
+        <img
+          src="/logo.svg"
+          alt="AWS Chat App Logo"
+          style={{ width: 40, height: 40, marginRight: 10 }}
+        />
+        <Typography
+          level="h2"
+          sx={{ fontWeight: "bold", color: "primary.main" }}
+        >
+          AWS Chat App
+        </Typography>
+      </Box>
+
       <Sheet variant="outlined" sx={styles.sheetStyles}>
         <Box sx={styles.headerBoxStyles}>
           <Typography level="h3" component="h1" sx={styles.titleStyles}>
-            🔑 Quên mật khẩu
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <MdLock style={{ marginRight: 8 }} /> Quên mật khẩu
+            </Box>
           </Typography>
           <Typography level="body-md" sx={{ mt: 1, color: "text.secondary" }}>
             Nhập email của bạn và chúng tôi sẽ gửi cho bạn liên kết để đặt lại
